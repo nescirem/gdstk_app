@@ -1,5 +1,5 @@
 # gdstk_app
-Application of gdstk
+Application of [gdstk](https://github.com/heitzmann/gdstk)
 
 ## build
 
