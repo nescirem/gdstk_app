@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14.0)
+cmake_minimum_required(VERSION 3.13.0)
 
 project(gdstk_app)
 
@@ -33,20 +33,19 @@ foreach(IT ${ZLIB_LIBRARIES})
     set(PRIVATE_LIBS "${PRIVATE_LIBS} ${IT}")
 endforeach()
 
-
-#set(gdstk_ROOT "/usr/local/include/gdstk/")
-#find_package(gdstk)
-# if (NOT gdstk_FOUND)
-	# message(FATAL_ERROR "gdstk Not Found!")
-# endif (NOT gdstk_FOUND)
+find_package(PkgConfig REQUIRED QUIET)
+pkg_search_module(gdstk REQUIRED gdstk IMPORTED_TARGET)
+if(TARGET PkgConfig::gdstk)
+	message(STATUS "Found gdstk")
+endif()
 
 #include_directories("/usr/local/include/gdstk/")
 #include_directories(${gdstk_INCLUDE_DIRS})
 include_directories(${ZLIB_INCLUDE_DIRS})
 
-
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --std=c++17 -lstdc++fs")
 
 add_executable(gdstk_app main.cpp)
 
-target_link_libraries(gdstk_app ${ZLIB_LIBRARIES} gdstk.a)
+target_link_libraries(gdstk_app ${ZLIB_LIBRARIES} PkgConfig::gdstk)
 #target_link_libraries(gdstk_app ${gdstk_LIBS})
