@@ -9,7 +9,9 @@ extern char *optarg;
 using namespace gdstk;
 
 #define RST "\033[0m"
+#define HLT "\033[1m"
 #define RED "\033[31m"
+#define DRED "\033[41m"
 #define YEL "\033[33m"
 #define CYA "\033[36m"
 
@@ -18,20 +20,30 @@ static struct option long_options[] =
     {"input",required_argument,NULL,'i'},
     {"in-format",required_argument,NULL,'b'},
     {"out-format",required_argument,NULL,'a'},
-    {"output",required_argument,NULL,'o'}
+    {"output",required_argument,NULL,'o'},
+    {"tolerance",required_argument,NULL,'t'}
 };
+
+template <typename Enumeration>
+auto as_integer(Enumeration const value)
+    -> typename std::underlying_type<Enumeration>::type
+{
+    return static_cast<typename std::underlying_type<Enumeration>::type>(value);
+}
 
 int main(int argc, char* argv[]) {
     namespace fs = std::filesystem;
     namespace cr = std::chrono;
     std::cout.precision(15);
     
+    double tolerance = 1e-2;
+    
     fs::path inFile, outFile;
     int inType = -1, outType = -1; //! 0-gds; 1-oas; -1-unknow
     
     int index = 0;
     int c = 0;
-    while( EOF != (c = getopt_long(argc,argv,"i:o:",long_options,&index)) )
+    while( EOF != (c = getopt_long(argc,argv,"i:o:t:b:a:",long_options,&index)) )
     {
         switch(c)
         {
@@ -40,6 +52,9 @@ int main(int argc, char* argv[]) {
                 break;
             case 'o':
                 outFile = optarg;
+                break;
+            case 't':
+                tolerance = atof(optarg);
                 break;
             case 'b':
                 if ( optarg == "gds" ){
@@ -81,15 +96,20 @@ int main(int argc, char* argv[]) {
         outType = outFile.extension() == ".oas" ? 1 : 0;
     }
     
+    std::cout << HLT <<"Tolerance: " << tolerance << RST << std::endl;
+    
     Library lib;
     ErrorCode error_code = ErrorCode::NoError;
     std::cout << "Reading file: " << inFile.string() << std::endl;
     auto start = cr::high_resolution_clock::now();
     if ( inType == 0 ){
-        lib = read_gds(inFile.c_str(), 0, 1e-2, NULL, &error_code);
+        lib = read_gds(inFile.c_str(), 0, tolerance, NULL, &error_code);
     }
     else if ( inType == 1 ){
-        lib = read_oas(inFile.c_str(), 0, 1e-2, &error_code);
+        lib = read_oas(inFile.c_str(), 0, tolerance, &error_code);
+    }
+    if (error_code != ErrorCode::NoError){
+        std::cout << DRED << "Error, code: " << as_integer(error_code) << RST << std::endl;
     }
     auto end = cr::high_resolution_clock::now();
     long long duration_us = cr::duration_cast<cr::microseconds>(end - start).count();
@@ -103,10 +123,14 @@ int main(int argc, char* argv[]) {
     std::cout << "Writing file: " << outFile.string() << std::endl;
     start = cr::high_resolution_clock::now();
     if ( outType == 0 ){
-        lib.write_gds(outFile.c_str(), 0, NULL);
+        error_code = lib.write_gds(outFile.c_str(), 0, NULL);
     }
     else if ( outType == 1 ){
-        lib.write_oas(outFile.c_str(), 0, 6, OASIS_CONFIG_DETECT_ALL);
+        error_code = lib.write_oas(outFile.c_str(), 0, 6, OASIS_CONFIG_DETECT_ALL);
+    }
+    
+    if (error_code != ErrorCode::NoError){
+        std::cout << DRED << "Error, code: " << as_integer(error_code) << RST << std::endl;
     }
     end = cr::high_resolution_clock::now();
     duration_us = cr::duration_cast<cr::microseconds>(end - start).count();
